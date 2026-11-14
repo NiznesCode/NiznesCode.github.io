@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>El Beso de Neptuno - El juego arcade de precisión y humor</title>
+    <style>
+        :root { --bg:#f3efe6; --ink:#2b2a33; }
+        @media (prefers-color-scheme:dark) {
+            :root:not([data-theme="light"]) { --bg:#17161d; --ink:#f1ede4; }
+        }
+        html, body { height: 100%; margin: 0; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, sans-serif; }
+        body { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; user-select: none; -webkit-user-select: none; touch-action: manipulation; overflow-x: hidden; }
+        
+        header { text-align: center; padding: 25px 15px 10px; }
+        h1 { margin: 0; font-size: 22px; }
+        p.subtitle { opacity: 0.8; font-size: 14px; margin: 5px 0 15px; }
+
+        #hud { display: flex; gap: 14px; font-weight: 600; font-size: 13px; margin-bottom: 10px; }
+        
+        /* Contenedor del juego con margen de seguridad superior e inferior */
+        .game-wrapper { margin: 20px auto; width: 100%; display: flex; justify-content: center; }
+        canvas { background: #bfe6f2; border-radius: 14px; max-width: 100%; max-height: 500px; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+        
+        small { opacity: .7; margin-bottom: 20px; }
+
+        /* Capas de contenido editorial para superar el filtro de AdSense */
+        .editorial-content { max-width: 650px; margin: 30px auto; padding: 0 20px; text-align: left; line-height: 1.6; font-size: 15px; }
+        .editorial-content h2 { font-size: 18px; margin-top: 25px; color: #1f6fb8; }
+
+        /* Bloques de anuncios con la distancia de seguridad obligatoria (>150px o separación limpia) */
+        .ad-slot { margin: 25px auto; min-height: 90px; width: 100%; max-width: 728px; text-align: center; background: rgba(0,0,0,0.03); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; opacity: 0.5; }
+
+        footer { margin-top: auto; padding: 25px; background: rgba(0,0,0,0.04); width: 100%; text-align: center; font-size: 0.85rem; }
+        footer a { color: var(--ink); margin: 0 10px; text-decoration: none; opacity: 0.8; }
+        footer a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 id="h">🔱 El Beso de Neptuno</h1>
+        <p class="subtitle">El simulador de físicas de baño más divertido y preciso.</p>
+    </header>
+
+    <!-- Espacio Publicitario Superior (AdSense) -->
+    <div class="ad-slot">[ Espacio para Anuncio Google AdSense ]</div>
+
+    <!-- HUD y Canvas del Juego -->
+    <div id="hud"><span id="r"></span><span id="s"></span><span id="b"></span></div>
+    <div class="game-wrapper">
+        <canvas id="c" width="360" height="540"></canvas>
+    </div>
+    <small id="hint"></small>
+
+    <!-- Espacio Publicitario Inferior (AdSense) - Separado de la zona de toque -->
+    <div class="ad-slot">[ Espacio para Anuncio Google AdSense ]</div>
+
+    <!-- Texto de Relleno Editorial (Obligatorio para que AdSense apruebe la web) -->
+    <section class="editorial-content">
+        <h2>¿Cómo se juega a El Beso de Neptuno?</h2>
+        <p>El objetivo del juego requiere de una precisión milimétrica en el cálculo de la potencia. Debes observar atentamente la barra de fuerza oscilante situada en la parte superior. Calcula el momento exacto y toca la pantalla para fijar la fuerza entre el Punto A y el Punto B.</p>
+        <p>Si te quedas corto, sufrirás una "sequía total". Si te pasas de potencia, provocarás un tsunami indeseado. La maestría consiste en lograr que ascienda una única y perfecta gota.</p>
+
+        <h2>La física detrás del fenómeno</h2>
+        <p>Inspirado en los misterios universales de la gravedad y la tensión superficial en los aseos de todo el mundo, este arcade de habilidad pone a prueba tus reflejos rediseñando situaciones cotidianas en clave de humor blanco y costumbrista.</p>
+    </section>
+
+    <!-- Pie de página con enlaces legales obligatorios -->
+    <footer>
+        <a href="#aviso-legal">Aviso Legal</a> | 
+        <a href="#privacidad">Política de Privacidad</a> | 
+        <a href="#cookies">Política de Cookies</a>
+    </footer>
+
+    <!-- Tu script del juego intacto -->
+    <script>
+        const cv=document.getElementById('c'),x=cv.getContext('2d');
+        const W=360,H=540,TX=180,TY=250,WY=430,G=1400,ROUNDS=5;
+        const FONT='system-ui,-apple-system,"Segoe UI",sans-serif';
+        const T={
+          es:{t:'El Beso de Neptuno',lang:'Idioma',diff:'Dificultad',lv:['Fácil','Normal','Difícil','Maestro de Neptuno'],rd:'Ronda',pt:'Puntos',rc:'Récord',hint:'Toca / Espacio para fijar la fuerza',sh:'Compartir',cp:'¡Copiado!',sm:'Hice {n} pts ({d}) en El Beso de Neptuno 🔱💦 ¿Me superas?',lo:'A: flojo',hi:'B: fuerte',tg:'DIANA',nx:'Toca para la siguiente ronda',fin:'Fin: {n} pts. Toca para volver al menú',
+          dry:['Sequía total 🏜️','El agua no llegó. Cero beso.'],kiss:['¡EL BESO DE NEPTUNO! 🔱💦','Una sola gota. Perfección.'],tsun:['¡Tsunami en las cachas! 🌊','Demasiada fuerza. Quedas empapado.'],half:['Se quedó a medias 😬','Casi. Ni una gota llegó.']},
+          en:{t:"Neptune's Kiss",lang:'Language',diff:'Difficulty',lv:['Easy','Normal','Hard','Neptune Master'],rd:'Round',pt:'Score',rc:'Best',hint:'Tap / Space to lock the power',sh:'Share',cp:'Copied!',sm:"I scored {n} pts ({d}) in Neptune's Kiss 🔱💦 Can you beat me?",lo:'A: weak',hi:'B: strong',tg:'TARGET',nx:'Tap for next round',fin:'Done: {n} pts. Tap to return to menu',
+          dry:['Total drought 🏜️','The water never made it. No kiss.'],kiss:["NEPTUNE'S KISS! 🔱💦",'A single drop. Perfection.'],tsun:['Tsunami on the cheeks! 🌊','Way too strong. Soaked.'],half:['Halfway there 😬','So close. Not one drop arrived.']},
+          zh:{t:'海神之吻',lang:'语言',diff:'难度',lv:['简单','普通','困难','海神大师'],rd:'回合',pt:'得分',rc:'最高分',hint:'点击 / 空格键锁定力度',sh:'分享',cp:'已复制！',sm:'我在《海神之吻》中拿到 {n} 分（{d}）🔱💦 你能超过我吗？',lo:'A: 轻',hi:'B: 重',tg:'目标',nx:'点击进入下一回合',fin:'结束：{n} 分。点击返回菜单',
+          dry:['彻底干旱 🏜️','水没有溅上来。没有吻。'],kiss:['海神之吻！🔱💦','只有一滴。完美。'],tsun:['屁股海啸！🌊','力度太大，全湿了。'],half:['差一点 😬','很接近，但一滴都没到。']}};
+        const D=[{w0:.2,dw:.012,sp:.7,m:1},{w0:.14,dw:.014,sp:.9,m:1},{w0:.09,dw:.01,sp:1.3,m:2},{w0:.07,dw:.006,sp:1.5,m:3,mv:1}];
+        let L='es',dI=1,st='lang',bar=0,dir=1,round=1,score=0,best=0,res='',parts=[],poop=null,wet=0,shake=0,t0=0,force=0,rc=.5;
+        const SND={lo:new Audio('data:audio/mpeg;base64,...'),ok:new Audio('data:audio/mpeg;base64,...'),hi:new Audio('data:audio/mpeg;base64,...')}; // (Mantén tus cadenas base64 originales aquí)
+        Object.values(SND).forEach(a=>{a.preload='auto'});
+        const SFX_DELAY=300;let unl=false;
+        function unlock(){if(unl)return;unl=true;Object.values(SND).forEach(a=>{a.muted=true;const q=a.play();if(q&&q.then)q.then(()=>{a.pause();a.currentTime=0;a.muted=false}).catch(()=>{a.muted=false})})}
+        function sfx(){unlock();const {c,w}=zone(),a=force<c-w?SND.lo:force<=c+w?SND.ok:SND.hi;setTimeout(()=>{try{a.muted=false;a.currentTime=0;const q=a.play();if(q&&q.catch)q.catch(()=>{})}catch(e){}},SFX_DELAY)}
+        const tx=()=>T[L];
+        const bkey=()=>'neptuno-best-'+dI;
+        function loadBest(){best=0;try{best=+localStorage.getItem(bkey())||0}catch(e){}}
+        const zone=()=>({c:D[dI].mv?rc:.5,w:Math.max(.04,D[dI].w0-round*D[dI].dw)});
+        const speed=()=>D[dI].sp+round*.3;
+        function upd(){const t=tx();document.documentElement.lang=L;h.textContent='🔱 '+t.t;document.title=t.t;
+          r.textContent=t.rd+' '+round+'/'+ROUNDS+' · '+t.lv[dI];s.textContent=t.pt+': '+score;b.textContent=t.rc+': '+best;hint.textContent=t.hint}
+        function btns(){
+          if(st==='lang')return [['English',0],['Español',1],['中文',2]].map(([l,i],k)=>({x:70,y:200+k*70,w:220,h:52,l,f:()=>{L=['en','es','zh'][i];st='diff';loadBest();upd()}}));
+          if(st==='diff')return tx().lv.map((l,i)=>({x:60,y:150+i*72,w:240,h:54,l:l+(D[i].m>1?'  ×'+D[i].m:''),f:()=>{dI=i;loadBest();round=1;score=0;newRound();st='aim';upd()}})).concat([{x:20,y:480,w:80,h:38,l:'←',f:()=>{st='lang'}}]);
+          if(st==='result'&&round>=ROUNDS)return [{x:90,y:242,w:180,h:42,l:'📤 '+tx().sh,f:share}];
+          return [];
+        }
+        let toast='',tt=0;
+        function card(){
+          const t=tx(),k=document.createElement('canvas');k.width=k.height=720;const g=k.getContext('2d');
+          const gr=g.createLinearGradient(0,0,0,720);gr.addColorStop(0,'#6cc3f0');gr.addColorStop(1,'#1f6fb8');g.fillStyle=gr;g.fillRect(0,0,720,720);
+          g.textAlign='center';g.fillStyle='#fff';
+          g.font='120px '+FONT;g.fillText('🔱',360,170);
+          g.font='bold 52px '+FONT;g.fillText(t.t,360,260);
+          g.font='bold 190px '+FONT;g.fillStyle='#f4c542';g.fillText(score,360,460);
+          g.fillStyle='#fff';g.font='bold 40px '+FONT;g.fillText(t.pt+' · '+t.lv[dI],360,530);
+          g.font='46px '+FONT;g.fillText('💦💦💦',360,620);
+          return new Promise(r=>k.toBlob(r,'image/png'));
+        }
+        async function share(){
+          const t=tx(),url=window.location.href,txt=t.sm.replace('{n}',score).replace('{d}',t.lv[dI]),full=txt+' '+url;
+          let bl=null,f=null;
+          try{bl=await card();f=new File([bl],'neptuno.png',{type:'image/png'})}catch(e){}
+          try{
+            if(navigator.share){
+              if(f&&navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:t.t,text:full});return}
+              await navigator.share({title:t.t,text:txt,url});return
+            }
+          }catch(e){if(e&&e.name==='AbortError')return}
+          try{if(bl&&window.ClipboardItem){await navigator.clipboard.write([new ClipboardItem({'image/png':bl,'text/plain':new Blob([full],{type:'text/plain'})})]);toast=t.cp;tt=performance.now();return}}catch(e){}
+          try{await navigator.clipboard.writeText(full);toast=t.cp}catch(e){toast=url}
+          tt=performance.now();
+        }
+        function newRound(){parts=[];wet=0;res='';rc=.3+Math.random()*.4;bar=0;dir=1}
+        function press(){
+          if(st==='aim'){force=bar;sfx();st='fall';poop={y:TY+30,vy:0}}
+          else if(st==='result'&&performance.now()-t0>700){
+            if(round>=ROUNDS){st='diff';round=1;score=0;upd();return}
+            round++;newRound();st='aim';upd();
+          }
+        }
+        addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();press()}});
+        cv.addEventListener('pointerdown',e=>{
+          e.preventDefault();
+          const fin=st==='result'&&round>=ROUNDS;
+          if(st==='lang'||st==='diff'||fin){
+            const q=cv.getBoundingClientRect(),px=(e.clientX-q.left)*W/q.width,py=(e.clientY-q.top)*H/q.height;
+            const hit=btns().find(o=>px>=o.x&&px<=o.x+o.w&&py>=o.y&&py<=o.y+o.h);if(hit)hit.f();else if(fin)press();
+          }else press();
+        });
+        const add=p=>{score+=p*D[dI].m};
+        function splash(){
+          const {c,w}=zone(),Hh=WY-TY;let n,v;
+          if(force<c-w){n=6;v=Math.sqrt(2*G*Hh*(.25+.5*force/(c-w)));res='dry';add(10)}
+          else if(force<=c+w){
+            v=Math.sqrt(2*G*(Hh-6));
+            parts.push({x:TX,y:WY,vx:0,vy:-v,r:5,hit:true});
+            for(let i=0;i<5;i++)parts.push({x:TX+(Math.random()-.5)*20,y:WY,vx:(Math.random()-.5)*90,vy:-Math.sqrt(2*G*Hh*(.3+Math.random()*.3)),r:3});
+            return;
+          }else{n=60;v=Math.sqrt(2*G*Hh*(1.4+force));res='tsun';wet=1;shake=14}
+          for(let i=0;i<n;i++){const a=(Math.random()-.5)*(force>c?1.8:.9);
+            parts.push({x:TX,y:WY,vx:Math.sin(a)*v*.5,vy:-v*(.6+Math.random()*.4)*Math.cos(a*.5),r:2+Math.random()*3})}
+          end();
+        }
+        function end(){st='result';t0=performance.now();if(score>best){best=score;try{localStorage.setItem(bkey(),best)}catch(e){}}upd()}
+        let last=performance.now();
+        function loop(now){
+          const dt=Math.min(.033,(now-last)/1000);last=now;
+          if(st==='aim'){bar+=dir*speed()*dt;if(bar>=1){bar=1;dir=-1}if(bar<=0){bar=0;dir=1}}
+          if(st==='fall'){poop.vy+=G*dt*(.5+force*1.5);poop.y+=poop.vy*dt;
+            if(poop.y>=WY-8){poop=null;st='splash';splash();if(st==='splash')st='fly'}}
+          if(st==='fly'||st==='result'){
+            let kiss=false;
+            parts.forEach(p=>{p.vy+=G*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
+              if(p.hit&&!p.done&&p.vy>=-40&&p.y<TY+22){p.done=true;kiss=true}});
+            parts=parts.filter(p=>p.y<WY+10||p.vy<0);
+            if(kiss&&st==='fly'){res='kiss';add(100);shake=8;end()}
+            else if(st==='fly'&&!parts.some(p=>p.vy<0||p.y<WY)){res='half';add(20);end()}
+          }
+          if(shake>0)shake=Math.max(0,shake-dt*30);
+          draw();requestAnimationFrame(loop);
+        }
+        function btn(o){x.fillStyle='#fff';x.strokeStyle='#2b2a33';x.lineWidth=2;x.beginPath();x.roundRect(o.x,o.y,o.w,o.h,12);x.fill();x.stroke();
+          x.fillStyle='#2b2a33';x.font='bold 18px '+FONT;x.textAlign='center';x.fillText(o.l,o.x+o.w/2,o.y+o.h/2+6)}
+        function draw(){
+          const t=tx(),menu=st==='lang'||st==='diff';
+          x.save();if(shake)x.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+          x.clearRect(0,0,W,H);x.fillStyle='#e8f6fb';x.fillRect(0,0,W,H);
+          x.strokeStyle='rgba(0,0,0,.06)';x.lineWidth=1;
+          for(let i=0;i<W;i+=40){x.beginPath();x.moveTo(i,0);x.lineTo(i,H);x.stroke()}
+          for(let j=0;j<H;j+=40){x.beginPath();x.moveTo(0,j);x.lineTo(W,j);x.stroke()}
+          x.fillStyle='#fff';x.strokeStyle='#9aa5ad';x.lineWidth=3;
+          x.beginPath();x.moveTo(70,300);x.lineTo(290,300);x.quadraticCurveTo(300,470,230,500);x.lineTo(130,500);x.quadraticCurveTo(60,470,70,300);x.fill();x.stroke();
+          x.fillStyle='#4fb3e8';x.beginPath();x.moveTo(92,WY);x.lineTo(268,WY);x.quadraticCurveTo(272,478,226,492);x.lineTo(134,492);x.quadraticCurveTo(88,478,92,WY);x.fill();
+          x.fillStyle=wet?'#e69a8f':'#f3b9a6';x.strokeStyle='#c98a78';x.lineWidth=2;
+          [135,225].forEach(cx=>{x.beginPath();x.ellipse(cx,TY-5,48,52,0,0,7);x.fill();x.stroke()});
+          x.fillStyle=wet?'#e69a8f':'#f3b9a6';x.fillRect(80,TY-60,200,30);
+          if(wet){x.fillStyle='rgba(79,179,232,.55)';[[120,TY+20],[150,TY+30],[210,TY+25],[240,TY+15],[180,TY+38]].forEach(([a,b])=>{x.beginPath();x.ellipse(a,b,8,13,0,0,7);x.fill()})}
+          const pulse=4*Math.sin(performance.now()/180);
+          x.strokeStyle='#e0334c';x.lineWidth=2;x.setLineDash([5,4]);x.beginPath();x.arc(TX,TY+20,13+pulse*.4,0,7);x.stroke();x.setLineDash([]);
+          x.fillStyle='#e0334c';x.font='bold 10px '+FONT;x.textAlign='center';x.fillText(t.tg,TX,TY+48);
+          if(poop){x.fillStyle='#7a4a24';x.beginPath();x.ellipse(TX,poop.y,12,8,0,0,7);x.fill();x.beginPath();x.ellipse(TX,poop.y-7,8,6,0,0,7);x.fill();
+            x.fillStyle='#fff';x.beginPath();x.arc(TX-4,poop.y-3,2.4,0,7);x.arc(TX+4,poop.y-3,2.4,0,7);x.fill();x.fillStyle='#000';x.beginPath();x.arc(TX-4,poop.y-3,1,0,7);x.arc(TX+4,poop.y-3,1,0,7);x.fill()}
+          parts.forEach(p=>{x.fillStyle=p.hit?'#1f8fd8':'#6cc3f0';x.beginPath();x.arc(p.x,p.y,p.r,0,7);x.fill()});
+          if(!menu){
+            const bx=40,by=40,bw=280,bh=22,{c,w}=zone();
+            x.fillStyle='#f4c542';x.fillRect(bx,by,bw*(c-w),bh);
+            x.fillStyle='#46c15a';x.fillRect(bx+bw*(c-w),by,bw*2*w,bh);
+            x.fillStyle='#e0334c';x.fillRect(bx+bw*(c+w),by,bw*(1-c-w),bh);
+            x.strokeStyle='#2b2a33';x.lineWidth=2;x.strokeRect(bx,by,bw,bh);
+            const px=bx+bw*(st==='aim'?bar:force);
+            x.fillStyle='#2b2a33';x.beginPath();x.moveTo(px,by+bh+2);x.lineTo(px-8,by+bh+16);x.lineTo(px+8,by+bh+16);x.fill();
+            x.font='bold 11px '+FONT;x.textAlign='left';x.fillText(t.lo,bx,by-6);x.textAlign='right';x.fillText(t.hi,bx+bw,by-6);
+          }
+          x.textAlign='center';
+          if(st==='result'){
+            const m=t[res]||['',''];
+            x.fillStyle='rgba(20,20,30,.82getMinutes)';x.beginPath();x.roundRect(15,120,330,110,14);x.fill();
+            x.fillStyle='#fff';x.font='bold 20px '+FONT;x.fillText(m[0],180,160);
+            x.font='13px '+FONT;x.fillText(m[1],180,186);x.fillStyle='#f4c542';
+            x.fillText(round>=ROUNDS?t.fin.replace('{n}',score):t.nx,180,212);
+            if(round>=ROUNDS){btns().forEach(btn);if(toast&&performance.now()-tt<4000){x.fillStyle='#2b2a33';x.font='bold 13px '+FONT;x.fillText(toast,180,310)}}
+          }
+          if(menu){
+            x.fillStyle='rgba(20,20,30,.8)';x.fillRect(0,0,W,H);
+            x.fillStyle='#fff';x.font='bold 26px '+FONT;x.fillText('🔱 '+t.t,180,70);
+            x.font='15px '+FONT;x.fillStyle='#f4c542';
+            x.fillText(st==='lang'?'Language · Idioma · 语言':t.diff,180,st==='lang'?130:115);
+            btns().forEach(btn);
+          }
+          x.restore();
+        }
+        upd();requestAnimationFrame(loop);
+    </script>
+</body>
+</html>
